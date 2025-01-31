@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electricity Tariff Analyzer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #100030;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1a1a40;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+        .logout-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px 16px;
+            background-color: #FF3B30;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background-color: #d62c1a;
+        }
+        button {
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input[type="text"], input[type="password"], input[type="number"] {
+            padding: 12px;
+            width: 100%;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+        h2 {
+            text-align: center;
+        }
+        .section-title {
+            font-size: 24px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="container">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username" />
+        <input type="password" id="password" placeholder="Password" />
+        <button onclick="login()">Login</button>
+    </div>
+
+    <!-- Home Page (After Login) -->
+    <div id="homePage" class="container" style="display:none;">
+        <h2>Welcome to the Energy Tariff Tracker</h2>
+        <button onclick="showElectricityUsage()">Electricity Usage Tracker</button>
+        <button onclick="showMonthlyCalculations()">Monthly Calculations</button>
+        <button onclick="showPieChart()">Pie Chart</button>
+        <button onclick="showFeedback()">Feedback</button>
+    </div>
+
+    <!-- Electricity Usage Tracker Page -->
+    <div id="electricityUsage" class="container" style="display:none;">
+        <h2>Electricity Usage Tracker</h2>
+        <input type="number" id="electricityUsageInput" placeholder="Enter electricity usage (kWh)" />
+        <button onclick="calculateCost()">Calculate Cost</button>
+        <p id="electricityCostResult"></p>
+        <button onclick="goBackToHome()">Back to Home</button>
+    </div>
+
+    <!-- Monthly Calculations Page -->
+    <div id="monthlyCalculations" class="container" style="display:none;">
+        <h2>Monthly Calculations</h2>
+        <input type="date" id="dateInput">
+        <input type="number" id="usageInput" placeholder="Enter usage (kWh)">
+        <input type="number" id="costInput" placeholder="Enter cost (£)">
+        <button onclick="addMonthlyCalculation()">Add Entry</button>
+        <table id="monthlyData">
+            <tr>
+                <th>Date</th>
+                <th>Usage (kWh)</th>
+                <th>Cost (£)</th>
+                <th>Actions</th>
+            </tr>
+        </table>
+        <button onclick="goBackToHome()">Back</button>
+    </div>
+
+    <!-- Pie Chart Page -->
+    <div id="pieChartContainer" class="container" style="display:none;">
+        <h2>Pie Chart Simulator</h2>
+        <canvas id="pieChart"></canvas>
+        <button onclick="goBackToHome()">Back to Home</button>
+    </div>
+
+    <!-- Feedback Page -->
+    <div id="feedbackSection" class="container" style="display:none;">
+        <h2>Feedback</h2>
+        <textarea id="feedback" placeholder="Write your feedback here..." rows="5"></textarea>
+        <button onclick="submitFeedback()">Submit Feedback</button>
+        <div id="feedbackHistory"></div>
+        <button onclick="goBackToHome()">Back to Home</button>
+    </div>
+
+    <script>
+        let monthlyCalculations = JSON.parse(localStorage.getItem('monthlyCalculations')) || [];
+        let feedbackHistory = JSON.parse(localStorage.getItem('feedbackHistory')) || [];
+        let loggedIn = false;
+
+        // Login Function
+        function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            // Basic login check (you can replace it with actual API or authentication logic)
+            if (username === 'admin' && password === 'password123') {
+                loggedIn = true;
+                document.getElementById("loginPage").style.display = 'none';
+                document.getElementById("homePage").style.display = 'block';
+            } else {
+                alert("Invalid credentials, please try again.");
+            }
+        }
+
+        // Logout Function
+        function logout() {
+            loggedIn = false;
+            document.getElementById("homePage").style.display = 'none';
+            document.getElementById("loginPage").style.display = 'block';
+        }
+
+        // Show Home Page after Login
+        function showHomePage() {
+            document.getElementById("homePage").style.display = 'block';
+            document.getElementById("loginPage").style.display = 'none';
+        }
+
+        // Show Electricity Usage Tracker Page
+        function showElectricityUsage() {
+            document.getElementById("homePage").style.display = 'none';
+            document.getElementById("electricityUsage").style.display = 'block';
+        }
+
+        // Show Monthly Calculations Page
+        function showMonthlyCalculations() {
+            renderMonthlyData();
+            document.getElementById("homePage").style.display = 'none';
+            document.getElementById("monthlyCalculations").style.display = 'block';
+        }
+
+        // Show Pie Chart Page
+        function showPieChart() {
+            document.getElementById("homePage").style.display = 'none';
+            document.getElementById("pieChartContainer").style.display = 'block';
+            var ctx = document.getElementById('pieChart').getContext('2d');
+            var myPieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Usage 1', 'Usage 2', 'Usage 3'],
+                    datasets: [{
+                        label: 'Electricity Usage Distribution',
+                        data: [40, 30, 30],
+                        backgroundColor: ['#FF5733', '#33FF57', '#3357FF'],
+                        borderColor: ['#FF5733', '#33FF57', '#3357FF'],
+                        borderWidth: 1
+                    }]
+                }
+            });
+        }
+
+        // Show Feedback Page
+        function showFeedback() {
+            renderFeedbackHistory();
+            document.getElementById("homePage").style.display = 'none';
+            document.getElementById("feedbackSection").style.display = 'block';
+        }
+
+        // Back to Home
+        function goBackToHome() {
+            document.getElementById("electricityUsage").style.display = 'none';
+            document.getElementById("monthlyCalculations").style.display = 'none';
+            document.getElementById("pieChartContainer").style.display = 'none';
+            document.getElementById("feedbackSection").style.display = 'none';
+            document.getElementById("homePage").style.display = 'block';
+        }
+
+        // Electricity Usage Cost Calculation
+        function calculateCost() {
+            let electricityUsage = parseFloat(document.getElementById("electricityUsageInput").value) || 0;
+            let costPerKWh = 0.15; // Example cost per kWh
+
+            if (electricityUsage <= 0) {
+                alert("Please enter valid electricity usage.");
+                return;
+            }
+
+            let totalCost = electricityUsage * costPerKWh;
+            document.getElementById("electricityCostResult").textContent = `Total Estimated Cost: £${totalCost.toFixed(2)}`;
+        }
+    
+        function showMonthlyCalculations() {
+            renderMonthlyData();
+            document.getElementById("homePage").style.display = 'none';
+            document.getElementById("monthlyCalculations").style.display = 'block';
+        }
+        function goBackToHome() {
+            document.getElementById("monthlyCalculations").style.display = 'none';
+            document.getElementById("homePage").style.display = 'block';
+        }
+        function addMonthlyCalculation() {
+            let date = document.getElementById("dateInput").value;
+            let usage = document.getElementById("usageInput").value;
+            let cost = document.getElementById("costInput").value;
+            if (!date || !usage || !cost) {
+                alert("Please fill in all fields");
+                return;
+            }
+            monthlyCalculations.push({ date, usage, cost });
+            localStorage.setItem('monthlyCalculations', JSON.stringify(monthlyCalculations));
+            renderMonthlyData();
+        }
+        function renderMonthlyData() {
+            let monthlyData = document.getElementById("monthlyData");
+            monthlyData.innerHTML = "<tr><th>Date</th><th>Usage (kWh)</th><th>Cost (£)</th><th>Actions</th></tr>";
+            monthlyCalculations.forEach((calculation, index) => {
+                monthlyData.innerHTML += `<tr>
+                    <td>${calculation.date}</td>
+                    <td>${calculation.usage}</td>
+                    <td>${calculation.cost}</td>
+                    <td>
+                        <button onclick="deleteCalculation(${index})">Delete</button>
+                    </td>
+                </tr>`;
+            });
+        }
+        function deleteCalculation(index) {
+            monthlyCalculations.splice(index, 1);
+            localStorage.setItem('monthlyCalculations', JSON.stringify(monthlyCalculations));
+            renderMonthlyData();
+        }
+        
+
+       
+
+        // Submit Feedback
+        function submitFeedback() {
+            let feedback = document.getElementById("feedback").value;
+            if (feedback.trim() === "") {
+                alert("Feedback cannot be empty.");
+                return;
+            }
+            feedbackHistory.push(feedback);
+            localStorage.setItem('feedbackHistory', JSON.stringify(feedbackHistory));
+            renderFeedbackHistory();
+            document.getElementById("feedback").value = "";
+            alert("Feedback Submitted!");
+        }
+
+        // Render Feedback History
+        function renderFeedbackHistory() {
+            let feedbackHistoryContainer = document.getElementById("feedbackHistory");
+            feedbackHistoryContainer.innerHTML = "<h3>Previous Feedback:</h3>";
+            
+            if (feedbackHistory.length === 0) {
+                feedbackHistoryContainer.innerHTML += "<p>No feedback submitted yet.</p>";
+            } else {
+                feedbackHistory.forEach((feedback, index) => {
+                    feedbackHistoryContainer.innerHTML += `<p>${feedback}</p>`;
+                });
+            }
+        }
+    </script>
+</body>
+</html>
